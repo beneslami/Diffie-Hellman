@@ -11,6 +11,9 @@
 #include <arpa/inet.h>
 #include<sys/un.h>
 #include<unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 typedef struct server_struct_ server_struct_t; /* opaque data structure */
 
