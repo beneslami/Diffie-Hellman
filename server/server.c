@@ -1,13 +1,13 @@
 #include "socket.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "../diffie-hellman/diffie-hellman.h"
 
 int main(int argc, char **argv){
-  int socketfd, comm_socket_fd, data_socket, ret, secret;
+  int socketfd, comm_socket_fd, data_socket, ret;
+  unsigned int client_secret, result;
   fd_set readfds;
   char buffer[BUFFER_SIZE];
   server_struct_t *server_attribute = calloc(1, sizeof(server_struct_t*));
+  key__t *server_key;
 
   if (argc != 2) {
         perror("ERROR, port is not initialized");
@@ -34,6 +34,7 @@ int main(int argc, char **argv){
   add_to_monitor(server_attribute, socketfd);
 
   for(;;){
+    server_key = calloc(1, sizeof(key_t*));
     refresh(server_attribute, &readfds);
     printf("Waiting for incoming connection\n");
     select(get_max(server_attribute) + 1, &readfds, NULL, NULL, NULL);
@@ -64,22 +65,26 @@ int main(int argc, char **argv){
         if(FD_ISSET(get_monitored_fd_set(server_attribute, i), &readfds)){
           comm_socket_fd = get_monitored_fd_set(server_attribute, i);
           memset(buffer, 0, BUFFER_SIZE);
-          ret = read(comm_socket_fd, buffer, sizeof(int));
+          ret = recv(comm_socket_fd, buffer, sizeof(int), 0);
           if(ret == -1){
             perror("read");
             exit(0);
           }
-          memcpy(&secret, buffer, sizeof(int));
+          memcpy(&client_secret, buffer, sizeof(int));
+          srand(time(NULL));
+          unsigned long min_prime = generate_prime(500, 1000);
+          unsigned long max_prime = generate_prime(5000, 10000);
+          generate_private_key(server_key, min_prime);
+          generate_public_key(server_key, get_key_private_key(server_key), min_prime, max_prime);
+          result = get_key_public_key(server_key);
 
-          printf("%d\n", secret);
-          int result = 1000;
-
-          memset(buffer, 0, BUFFER_SIZE);
-          ret = write(data_socket, &result, sizeof(int));
+          ret = send(data_socket, &result, sizeof(int), 0);
           if(ret == -1){
             perror("read");
             exit(0);
           }
+          int shared_key = generate_shared_key(get_key_private_key(server_key), client_secret, max_prime);
+          printf("shared key = %u\n", shared_key);
           close(comm_socket_fd);
           remove_from_monitor(server_attribute, comm_socket_fd);
           break;
@@ -87,6 +92,7 @@ int main(int argc, char **argv){
         break;
       }
     }
+    free(server_key);
   }
   close(socketfd);
   remove_from_monitor(server_attribute, socketfd);
