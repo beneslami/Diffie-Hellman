@@ -11,3 +11,5 @@ Diffie-Hellman protocol is basically Elliptic Curve Discrete Log problem. In ess
 ![equation](data/equation2.png)
 
 The above eqation is one way, which means that it is easy to find Q but quite impossible to find k when we only have Q. 
+
+![picture](dh-001.png)
